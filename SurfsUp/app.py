@@ -109,15 +109,21 @@ def tobs():
 @app.route("/api/v1.0/<start>")
 @app.route("/api/v1.0/<start>/<end>")
 def date(start = None, end = None):
+    # I wanted to make sure the values for start and end were valid and I found
+    # that the datetime library had the fromisoformat method that could do so.
+    # This verifies that both the start and end values entered are actually dates.
     try:
-        if start:
+        if start & end:
             dt.date.fromisoformat(start)
-        elif end:
             dt.date.fromisoformat(end)
     except:
         return jsonify({"error": f"Date(s) entered were not properly formatted (YYYY-MM-DD)"})
 
-    
+    # I wanted to make sure that the start date came before the end date,
+    # that the end date came after the earliest date in the data, and that
+    # the start date came before the latest date in the data. This ensures 
+    # that happens. I could have used a try/except block, but each case required
+    # a specific response.
     if end:
         if start > end:
             return jsonify({"error": f"Start date occurs after end date. Please try again."}), 404
@@ -137,7 +143,7 @@ def date(start = None, end = None):
         
         return jsonify(temps_list)
     else:
-        temps_query.filter(measurement.date <= end).all()
+        temps_query = temps_query.filter(measurement.date <= end).all()
         
         temps_list = list(np.ravel(temps_query))
 
