@@ -8,7 +8,7 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, redirect
 
 
 #################################################
@@ -69,7 +69,8 @@ def welcome():
             after that start date.<br/>"
         f"<b>/api/v1.0/start/end</b> -- replace 'start' and 'end' with dates \
             (YYYY-MM-DD) to see the minimum, maximum, and average \
-            temperature between those dates, inclusive"
+            temperature between those dates, inclusive<br/><br/>"
+        f"<b>/api/v1.0/secret</b> -- if you dare"
     )
 
 @app.route("/api/v1.0/precipitation")
@@ -150,6 +151,10 @@ def date(start = None, end = None):
         temps_list = list(np.ravel(temps_query))
 
         return jsonify(temps_list)
+
+@app.route('/api/v1.0/secret')
+def reroute():
+    return redirect('https://www.youtube.com/watch?v=o-YBDTqX_ZU')
     
 if __name__ == '__main__':
     app.run(debug = True)
