@@ -44,15 +44,16 @@ most_recent_date = session.query(measurement.date).\
 year_ago = dt.datetime.strptime(most_recent_date, '%Y-%m-%d') \
     - dt.timedelta(days = 366)
 
-active_stations = session.query(measurement.station, func.count(measurement.station))\
+stations_count = session.query(measurement.station, func.count(measurement.station))\
         .group_by(measurement.station)\
         .order_by(func.count(measurement.station).desc())\
         .all()
     
-most_active_station = active_stations[0][0]
+most_active_station = stations_count[0][0]
 
 # Beginning of the routes:
-# Welcome page that lists all available routes
+# Welcome page that lists all available routes,
+# including a secret one if you are willing to follow it. ;)
 @app.route("/")
 def welcome():
     """List all available api routes."""
@@ -73,18 +74,26 @@ def welcome():
         f"<b>/api/v1.0/secret</b> -- if you dare"
     )
 
+# This route shows the date and precipitation over the last year of data collection.
+# I noticed that the site shows only 1 piece of data per date, and that's because 
+# we're instructed to make the results into a dictionary. In doing so, only the 
+# last data point for each date is kept because the dictionary must have unique keys.
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     precip_query = session\
         .query(measurement.date, measurement.prcp)\
         .filter(measurement.date >= year_ago)\
         .filter(measurement.date <= most_recent_date)\
+        .order_by(measurement.date)\
         .all()
     
     precip_dict = {date: prcp for (date, prcp) in precip_query}
     
     return jsonify(precip_dict)
 
+# This route shows the station code and name from the station table. 
+# Since the directions mentioned a list, I put the data in a list. I feel 
+# that a dictionary would be a better presentation, but I left it as a list.
 @app.route("/api/v1.0/stations")
 def stations():
     station_query = session\
@@ -94,6 +103,8 @@ def stations():
 
     return jsonify(station_list)
 
+# This route shows the temperature observations from the last year of data 
+# collection for the most active station (USC00519281).
 @app.route("/api/v1.0/tobs")
 def tobs():
     tobs_query = session\
@@ -108,6 +119,10 @@ def tobs():
 
     return jsonify(tobs_list)
 
+# This route allows users to enter a start date and possibly an end date, and 
+# therefore getting the min, min, and average temperatures between those two dates,
+# inclusively. If an end date is not used, then the stats are calculated from the 
+# start date forward.
 @app.route("/api/v1.0/<start>")
 @app.route("/api/v1.0/<start>/<end>")
 def date(start = None, end = None):
@@ -135,12 +150,14 @@ def date(start = None, end = None):
     elif start > most_recent_date:
         return jsonify({"error": f"Start date occurs after most recent date with data. Please try again."}), 404
     
-    
+    # This finds the correct data, filtering and calculating the stats.  
     temps_query = session\
         .query(func.min(measurement.tobs),\
             func.avg(measurement.tobs), func.max(measurement.tobs))\
         .filter(measurement.date >= start)
-        
+    
+    # If the end date is not entered, then the stats are returned. If it is
+    # entered, then the query is filtered again before returning the stats.
     if not end:
         temps_list = list(np.ravel(temps_query.all()))
         
@@ -152,6 +169,8 @@ def date(start = None, end = None):
 
         return jsonify(temps_list)
 
+# This is a secret route that I wondered if I was able to redirect. Try
+# it at your own risk! lol
 @app.route('/api/v1.0/secret')
 def reroute():
     return redirect('https://www.youtube.com/watch?v=o-YBDTqX_ZU')
