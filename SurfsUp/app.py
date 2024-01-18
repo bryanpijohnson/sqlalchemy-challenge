@@ -51,6 +51,8 @@ active_stations = session.query(measurement.station, func.count(measurement.stat
     
 most_active_station = active_stations[0][0]
 
+# Beginning of the routes:
+# Welcome page that lists all available routes
 @app.route("/")
 def welcome():
     """List all available api routes."""
@@ -61,7 +63,7 @@ def welcome():
             each day for the last year of collection<br/>"
         f"<b>/api/v1.0/stations</b> -- the list of all the stations, by code and name<br/>"
         f"<b>/api/v1.0/tobs</b> -- the list of temperature readings for the \
-            most active station ({most_active_station})<br/>"
+            most active station ({most_active_station}) in the last year of data collection<br/>"
         f"<b>/api/v1.0/start</b> -- replace 'start' with a date (YYYY-MM-DD) \
             to see the minimum, maximum, and average temperature \
             after that start date.<br/>"
@@ -76,7 +78,6 @@ def precipitation():
         .query(measurement.date, measurement.prcp)\
         .filter(measurement.date >= year_ago)\
         .filter(measurement.date <= most_recent_date)\
-        .order_by(measurement.date.desc())\
         .all()
     
     precip_dict = {date: prcp for (date, prcp) in precip_query}
@@ -95,11 +96,11 @@ def stations():
 @app.route("/api/v1.0/tobs")
 def tobs():
     tobs_query = session\
-        .query(measurement.tobs)\
+        .query(measurement.date, measurement.tobs)\
         .filter(measurement.date >= year_ago)\
         .filter(measurement.date <= most_recent_date)\
         .filter(measurement.station == most_active_station)\
-        .order_by(measurement.date.desc())\
+        .order_by(measurement.date)\
         .all()
     
     tobs_list = list(np.ravel(tobs_query))
@@ -113,8 +114,9 @@ def date(start = None, end = None):
     # that the datetime library had the fromisoformat method that could do so.
     # This verifies that both the start and end values entered are actually dates.
     try:
-        if start & end:
+        if start:
             dt.date.fromisoformat(start)
+        elif end:
             dt.date.fromisoformat(end)
     except:
         return jsonify({"error": f"Date(s) entered were not properly formatted (YYYY-MM-DD)"})
